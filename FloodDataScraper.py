@@ -12,6 +12,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
 from flask_cors import CORS
 import os
+import shutil
 
 # ✅ Flask Web App
 app = Flask(__name__)
@@ -32,7 +33,8 @@ def scrape_sensor_data():
     options.add_argument("--disable-dev-shm-usage")
     options.binary_location = CHROME_BINARY_PATH  # ✅ Set Chrome binary path
 
-    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+    chromedriver_path = shutil.which("chromedriver")
+    driver = webdriver.Chrome(executable_path=chromedriver_path, options=options)
 
     try:
         url = "https://app.iriseup.ph/sensor_networks"
