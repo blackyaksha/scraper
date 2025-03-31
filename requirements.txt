@@ -1,6 +1,5 @@
+selenium>=4.0.0
+webdriver-manager>=3.8.0
 flask
-selenium
-pandas
-chromedriver-autoinstaller
-webdriver-manager
 flask-cors
+pandas
