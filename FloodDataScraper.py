@@ -76,11 +76,38 @@ def scrape_sensor_data():
         
         # Verify Chrome exists
         if not os.path.exists(chrome_path):
-            raise FileNotFoundError(f"Chrome not found at {chrome_path}")
+            print(f"Chrome not found at {chrome_path}, checking alternative locations...")
+            # Try to find Chrome in common locations
+            possible_paths = [
+                '/usr/bin/google-chrome',
+                '/usr/bin/google-chrome-stable',
+                '/usr/local/bin/google-chrome',
+                '/usr/local/bin/google-chrome-stable'
+            ]
+            for path in possible_paths:
+                if os.path.exists(path):
+                    chrome_path = path
+                    print(f"Found Chrome at {path}")
+                    break
+            else:
+                raise FileNotFoundError("Chrome not found in any common locations")
             
         # Verify ChromeDriver exists
         if not os.path.exists(chromedriver_path):
-            raise FileNotFoundError(f"ChromeDriver not found at {chromedriver_path}")
+            print(f"ChromeDriver not found at {chromedriver_path}, checking alternative locations...")
+            # Try to find ChromeDriver in common locations
+            possible_paths = [
+                '/usr/local/bin/chromedriver',
+                '/usr/bin/chromedriver',
+                '/opt/chromedriver'
+            ]
+            for path in possible_paths:
+                if os.path.exists(path):
+                    chromedriver_path = path
+                    print(f"Found ChromeDriver at {path}")
+                    break
+            else:
+                raise FileNotFoundError("ChromeDriver not found in any common locations")
         
         # Set Chrome binary location
         options.binary_location = chrome_path
@@ -99,11 +126,11 @@ def scrape_sensor_data():
             import subprocess
             
             # Check Chrome installation
-            chrome_version = subprocess.check_output(["google-chrome", "--version"]).decode().strip()
+            chrome_version = subprocess.check_output([chrome_path, "--version"]).decode().strip()
             print(f"Chrome version: {chrome_version}")
             
             # Check ChromeDriver installation
-            chromedriver_version = subprocess.check_output(["/usr/local/bin/chromedriver", "--version"]).decode().strip()
+            chromedriver_version = subprocess.check_output([chromedriver_path, "--version"]).decode().strip()
             print(f"ChromeDriver version: {chromedriver_version}")
             
             # If we get here, both are installed but something else went wrong
