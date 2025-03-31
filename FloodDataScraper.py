@@ -70,74 +70,71 @@ def scrape_sensor_data():
     options.add_experimental_option("useAutomationExtension", False)
     
     try:
-        # Get Chrome and ChromeDriver paths from environment variables
-        chrome_path = os.environ.get('CHROME_PATH', '/usr/bin/google-chrome')
-        chromedriver_path = os.environ.get('CHROMEDRIVER_PATH', '/usr/local/bin/chromedriver')
+        # Use ChromeDriverManager for reliable ChromeDriver installation
+        from selenium.webdriver.chrome.service import Service
+        from webdriver_manager.chrome import ChromeDriverManager
         
-        # Verify Chrome exists
-        if not os.path.exists(chrome_path):
-            print(f"Chrome not found at {chrome_path}, checking alternative locations...")
-            # Try to find Chrome in common locations
-            possible_paths = [
-                '/usr/bin/google-chrome',
-                '/usr/bin/google-chrome-stable',
-                '/usr/local/bin/google-chrome',
-                '/usr/local/bin/google-chrome-stable'
-            ]
-            for path in possible_paths:
-                if os.path.exists(path):
-                    chrome_path = path
-                    print(f"Found Chrome at {path}")
-                    break
-            else:
-                raise FileNotFoundError("Chrome not found in any common locations")
-            
-        # Verify ChromeDriver exists
-        if not os.path.exists(chromedriver_path):
-            print(f"ChromeDriver not found at {chromedriver_path}, checking alternative locations...")
-            # Try to find ChromeDriver in common locations
-            possible_paths = [
-                '/usr/local/bin/chromedriver',
-                '/usr/bin/chromedriver',
-                '/opt/chromedriver'
-            ]
-            for path in possible_paths:
-                if os.path.exists(path):
-                    chromedriver_path = path
-                    print(f"Found ChromeDriver at {path}")
-                    break
-            else:
-                raise FileNotFoundError("ChromeDriver not found in any common locations")
-        
-        # Set Chrome binary location
-        options.binary_location = chrome_path
-        
-        # Create service with specific ChromeDriver path
-        service = Service(executable_path=chromedriver_path)
-        
-        # Initialize Chrome driver
-        driver = webdriver.Chrome(service=service, options=options)
+        # Initialize Chrome driver with ChromeDriverManager
+        driver = webdriver.Chrome(
+            service=Service(ChromeDriverManager().install()),
+            options=options
+        )
         
     except Exception as e:
-        print(f"Failed to initialize Chrome driver: {e}")
-        print("Checking Chrome and ChromeDriver installation...")
+        print(f"Failed to initialize Chrome driver with ChromeDriverManager: {e}")
+        print("Attempting to use system Chrome and ChromeDriver...")
         
         try:
-            import subprocess
+            # Get Chrome and ChromeDriver paths from environment variables
+            chrome_path = os.environ.get('CHROME_PATH', '/usr/bin/google-chrome')
+            chromedriver_path = os.environ.get('CHROMEDRIVER_PATH', '/usr/local/bin/chromedriver')
             
-            # Check Chrome installation
-            chrome_version = subprocess.check_output([chrome_path, "--version"]).decode().strip()
-            print(f"Chrome version: {chrome_version}")
+            # Verify Chrome exists
+            if not os.path.exists(chrome_path):
+                print(f"Chrome not found at {chrome_path}, checking alternative locations...")
+                # Try to find Chrome in common locations
+                possible_paths = [
+                    '/usr/bin/google-chrome',
+                    '/usr/bin/google-chrome-stable',
+                    '/usr/local/bin/google-chrome',
+                    '/usr/local/bin/google-chrome-stable'
+                ]
+                for path in possible_paths:
+                    if os.path.exists(path):
+                        chrome_path = path
+                        print(f"Found Chrome at {path}")
+                        break
+                else:
+                    raise FileNotFoundError("Chrome not found in any common locations")
+                
+            # Verify ChromeDriver exists
+            if not os.path.exists(chromedriver_path):
+                print(f"ChromeDriver not found at {chromedriver_path}, checking alternative locations...")
+                # Try to find ChromeDriver in common locations
+                possible_paths = [
+                    '/usr/local/bin/chromedriver',
+                    '/usr/bin/chromedriver',
+                    '/opt/chromedriver'
+                ]
+                for path in possible_paths:
+                    if os.path.exists(path):
+                        chromedriver_path = path
+                        print(f"Found ChromeDriver at {path}")
+                        break
+                else:
+                    raise FileNotFoundError("ChromeDriver not found in any common locations")
             
-            # Check ChromeDriver installation
-            chromedriver_version = subprocess.check_output([chromedriver_path, "--version"]).decode().strip()
-            print(f"ChromeDriver version: {chromedriver_version}")
+            # Set Chrome binary location
+            options.binary_location = chrome_path
             
-            # If we get here, both are installed but something else went wrong
-            raise Exception("Chrome and ChromeDriver are installed but initialization failed")
+            # Create service with specific ChromeDriver path
+            service = Service(executable_path=chromedriver_path)
             
-        except Exception as check_error:
-            print(f"Installation check failed: {check_error}")
+            # Initialize Chrome driver
+            driver = webdriver.Chrome(service=service, options=options)
+            
+        except Exception as system_error:
+            print(f"Failed to initialize Chrome driver with system Chrome: {system_error}")
             raise
 
     try:
