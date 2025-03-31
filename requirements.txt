@@ -1,6 +1,6 @@
-flask==3.0.2
-flask-cors==4.0.0
-selenium==4.18.1
-pandas==2.2.1
-undetected-chromedriver==3.5.5
-webdriver-manager==4.0.1 
+flask
+flask-cors
+selenium
+pandas
+undetected-chromedriver
+webdriver-manager
