@@ -11,10 +11,14 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
 from flask_cors import CORS
+import os
 
 # ✅ Flask Web App
 app = Flask(__name__)
 CORS(app)
+
+# Get port from environment variable or default to 5000
+port = int(os.environ.get("PORT", 5000))
 
 SENSOR_DATA_FILE = "sensor_data.json"
 CSV_FILE_PATH = "sensor_data.csv"
@@ -64,8 +68,62 @@ def scrape_sensor_data():
     options.add_argument("--disable-blink-features=AutomationControlled")
     options.add_experimental_option("excludeSwitches", ["enable-automation"])
     options.add_experimental_option("useAutomationExtension", False)
-
-    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+    
+    try:
+        # Use system Chrome and ChromeDriver
+        chrome_path = os.environ.get('CHROME_PATH', '/usr/bin/google-chrome')
+        chromedriver_path = os.environ.get('CHROMEDRIVER_PATH', '/usr/bin/chromedriver')
+        
+        # Set Chrome binary location
+        options.binary_location = chrome_path
+        
+        # Create service with specific ChromeDriver path
+        service = Service(executable_path=chromedriver_path)
+        
+        # Initialize Chrome driver
+        driver = webdriver.Chrome(service=service, options=options)
+        
+    except Exception as e:
+        print(f"Failed to initialize Chrome driver: {e}")
+        print("Attempting to install Chrome and ChromeDriver...")
+        
+        try:
+            import subprocess
+            
+            # Install Chrome
+            subprocess.run([
+                "wget", "-q", "-O", "-", "https://dl-ssl.google.com/linux/linux_signing_key.pub",
+                "|", "apt-key", "add", "-"
+            ], shell=True, check=True)
+            
+            subprocess.run([
+                "echo", "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main",
+                ">", "/etc/apt/sources.list.d/google.list"
+            ], shell=True, check=True)
+            
+            subprocess.run(["apt-get", "update"], check=True)
+            subprocess.run(["apt-get", "install", "-y", "google-chrome-stable"], check=True)
+            
+            # Install ChromeDriver
+            CHROME_VERSION = subprocess.check_output(["google-chrome", "--version"]).decode().strip()
+            print(f"Installed Chrome version: {CHROME_VERSION}")
+            
+            # Download and install ChromeDriver
+            subprocess.run([
+                "wget", "-q", "-O", "/usr/bin/chromedriver",
+                "https://chromedriver.storage.googleapis.com/114.0.5735.90/chromedriver_linux64.zip"
+            ], check=True)
+            
+            subprocess.run(["unzip", "-o", "/usr/bin/chromedriver", "-d", "/usr/bin/"], check=True)
+            subprocess.run(["chmod", "+x", "/usr/bin/chromedriver"], check=True)
+            
+            # Try initializing driver again
+            service = Service(executable_path="/usr/bin/chromedriver")
+            driver = webdriver.Chrome(service=service, options=options)
+            
+        except Exception as install_error:
+            print(f"Failed to install Chrome and ChromeDriver: {install_error}")
+            raise
 
     try:
         url = "https://app.iriseup.ph/sensor_networks"
@@ -212,5 +270,5 @@ if __name__ == "__main__":
     scraper_thread = threading.Thread(target=start_auto_scraper, daemon=True)
     scraper_thread.start()
 
-    print("🚀 Flask API running at http://127.0.0.1:5000/")
-    app.run(debug=True, host="0.0.0.0", port=5000)
+    print(f"🚀 Flask API running on port {port}")
+    app.run(host="0.0.0.0", port=port)
