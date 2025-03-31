@@ -11,14 +11,10 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
 from flask_cors import CORS
-import os
 
 # ✅ Flask Web App
 app = Flask(__name__)
 CORS(app)
-
-# Get port from environment variable or default to 5000
-port = int(os.environ.get("PORT", 5000))
 
 SENSOR_DATA_FILE = "sensor_data.json"
 CSV_FILE_PATH = "sensor_data.csv"
@@ -55,90 +51,8 @@ def scrape_sensor_data():
     options.add_argument("--disable-gpu")
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
-    options.add_argument("--disable-extensions")
-    options.add_argument("--disable-software-rasterizer")
-    options.add_argument("--remote-debugging-port=9222")
-    options.add_argument("--window-size=1920,1080")
-    options.add_argument("--disable-setuid-sandbox")
-    options.add_argument("--disable-web-security")
-    options.add_argument("--disable-features=IsolateOrigins,site-per-process")
-    options.add_argument("--disable-site-isolation-trials")
-    options.add_argument("--ignore-certificate-errors")
-    options.add_argument("--allow-running-insecure-content")
-    options.add_argument("--disable-blink-features=AutomationControlled")
-    options.add_experimental_option("excludeSwitches", ["enable-automation"])
-    options.add_experimental_option("useAutomationExtension", False)
-    
-    try:
-        # Get Chrome and ChromeDriver paths from environment variables
-        chrome_path = os.environ.get('CHROME_PATH', '/usr/bin/google-chrome')
-        chromedriver_path = os.environ.get('CHROMEDRIVER_PATH', '/usr/local/bin/chromedriver')
-        
-        # Verify Chrome exists
-        if not os.path.exists(chrome_path):
-            print(f"Chrome not found at {chrome_path}, checking alternative locations...")
-            # Try to find Chrome in common locations
-            possible_paths = [
-                '/usr/bin/google-chrome',
-                '/usr/bin/google-chrome-stable',
-                '/usr/local/bin/google-chrome',
-                '/usr/local/bin/google-chrome-stable'
-            ]
-            for path in possible_paths:
-                if os.path.exists(path):
-                    chrome_path = path
-                    print(f"Found Chrome at {path}")
-                    break
-            else:
-                raise FileNotFoundError("Chrome not found in any common locations")
-            
-        # Verify ChromeDriver exists
-        if not os.path.exists(chromedriver_path):
-            print(f"ChromeDriver not found at {chromedriver_path}, checking alternative locations...")
-            # Try to find ChromeDriver in common locations
-            possible_paths = [
-                '/usr/local/bin/chromedriver',
-                '/usr/bin/chromedriver',
-                '/opt/chromedriver'
-            ]
-            for path in possible_paths:
-                if os.path.exists(path):
-                    chromedriver_path = path
-                    print(f"Found ChromeDriver at {path}")
-                    break
-            else:
-                raise FileNotFoundError("ChromeDriver not found in any common locations")
-        
-        # Set Chrome binary location
-        options.binary_location = chrome_path
-        
-        # Create service with specific ChromeDriver path
-        service = Service(executable_path=chromedriver_path)
-        
-        # Initialize Chrome driver
-        driver = webdriver.Chrome(service=service, options=options)
-        
-    except Exception as e:
-        print(f"Failed to initialize Chrome driver: {e}")
-        print("Checking Chrome and ChromeDriver installation...")
-        
-        try:
-            import subprocess
-            
-            # Check Chrome installation
-            chrome_version = subprocess.check_output([chrome_path, "--version"]).decode().strip()
-            print(f"Chrome version: {chrome_version}")
-            
-            # Check ChromeDriver installation
-            chromedriver_version = subprocess.check_output([chromedriver_path, "--version"]).decode().strip()
-            print(f"ChromeDriver version: {chromedriver_version}")
-            
-            # If we get here, both are installed but something else went wrong
-            raise Exception("Chrome and ChromeDriver are installed but initialization failed")
-            
-        except Exception as check_error:
-            print(f"Installation check failed: {check_error}")
-            raise
+
+    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
 
     try:
         url = "https://app.iriseup.ph/sensor_networks"
@@ -285,5 +199,5 @@ if __name__ == "__main__":
     scraper_thread = threading.Thread(target=start_auto_scraper, daemon=True)
     scraper_thread.start()
 
-    print(f"🚀 Flask API running on port {port}")
-    app.run(host="0.0.0.0", port=port)
+    print("🚀 Flask API running at http://127.0.0.1:5000/")
+    app.run(debug=True, host="0.0.0.0", port=5000)
