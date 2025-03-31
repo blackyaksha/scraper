@@ -4,3 +4,4 @@ pandas
 chromedriver-autoinstaller
 webdriver-manager
 flask-cors
+chromium-chromedriver
