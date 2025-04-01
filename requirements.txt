@@ -1,6 +1,0 @@
-flask
-selenium
-webdriver-manager
-pandas
-flask-cors
-gunicorn
