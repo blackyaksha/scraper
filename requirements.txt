@@ -1,6 +1,6 @@
 flask
-flask-cors
 selenium
-pandas
-undetected-chromedriver
 webdriver-manager
+pandas
+flask-cors
+gunicorn
