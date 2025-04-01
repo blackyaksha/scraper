@@ -52,7 +52,7 @@ def scrape_sensor_data():
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
 
-    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+    driver = webdriver.Chrome(service=Service("/usr/bin/chromedriver"), options=options)
 
     try:
         url = "https://app.iriseup.ph/sensor_networks"
