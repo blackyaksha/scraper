@@ -46,13 +46,11 @@ SENSOR_CATEGORIES = {
 
 # ✅ Function to Scrape All Data from iRiseUP Website
 def scrape_sensor_data():
-    options = webdriver.ChromeOptions()
-    options.add_argument("--headless")
-    options.add_argument("--disable-gpu")
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-dev-shm-usage")
-
-    driver = webdriver.Chrome(service=Service("/usr/bin/chromedriver"), options=options)
+   options = webdriver.ChromeOptions()
+   options.add_argument("--headless")  # Run without UI
+   options.add_argument("--no-sandbox")  # Required for Railway
+   options.add_argument("--disable-dev-shm-usage")  # Prevent memory issues
+   driver = webdriver.Chrome(service=Service("/usr/bin/chromedriver"), options=options)
 
     try:
         url = "https://app.iriseup.ph/sensor_networks"
