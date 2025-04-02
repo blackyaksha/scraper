@@ -16,11 +16,12 @@ async function scrapeSensorData() {
 
     let browser;
     try {
-        // Launch Puppeteer with custom executable path if available
+        // Launch Puppeteer with custom executable path and cache configuration
         browser = await puppeteer.launch({
             headless: "new", // Running in headless mode
             executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || puppeteer.executablePath(), // Allow environment override
             args: ["--no-sandbox", "--disable-setuid-sandbox"], // Security settings for headless environment
+            userDataDir: './.puppeteer_data', // Custom data directory for user data (caching etc.)
         });
 
         const page = await browser.newPage();
