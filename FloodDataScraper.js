@@ -39,38 +39,43 @@ const SENSOR_CATEGORIES = {
 async function scrapeSensorData() {
     console.log("🌍 Fetching data from Streamlit...");
     
-    const browser = await puppeteer.launch({
-        headless: "new",
-        executablePath: "/opt/render/.cache/puppeteer/chrome/linux-134.0.6998.165/chrome-linux64/chrome",
-        args: ["--no-sandbox", "--disable-setuid-sandbox"]
-    });
-    
-    const page = await browser.newPage();
-    await page.goto("https://app.iriseup.ph/sensor_networks", { waitUntil: "networkidle2" });
-
-    // ✅ Extract data from table
-    const sensorData = await page.evaluate(() => {
-        return Array.from(document.querySelectorAll("table tbody tr")).map(row => {
-            const cols = row.querySelectorAll("td");
-            return {
-                "SENSOR NAME": cols[0]?.innerText.trim() || "N/A",
-                "OBS TIME": cols[1]?.innerText.trim() || "N/A",
-                "NORMAL LEVEL": cols[2]?.innerText.trim() || "N/A",
-                "CURRENT": cols[3]?.innerText.trim() || "N/A",
-                "DESCRIPTION": cols[4]?.innerText.trim() || "N/A"
-            };
+    let browser;
+    try {
+        browser = await puppeteer.launch({
+            headless: "new",
+            args: ["--no-sandbox", "--disable-setuid-sandbox"]
         });
-    });
+        
+        const page = await browser.newPage();
+        await page.goto("https://app.iriseup.ph/sensor_networks", { waitUntil: "networkidle2" });
 
-    await browser.close();
+        // ✅ Extract data from table
+        const sensorData = await page.evaluate(() => {
+            return Array.from(document.querySelectorAll("table tbody tr")).map(row => {
+                const cols = row.querySelectorAll("td");
+                return {
+                    "SENSOR NAME": cols[0]?.innerText.trim() || "N/A",
+                    "OBS TIME": cols[1]?.innerText.trim() || "N/A",
+                    "NORMAL LEVEL": cols[2]?.innerText.trim() || "N/A",
+                    "CURRENT": cols[3]?.innerText.trim() || "N/A",
+                    "DESCRIPTION": cols[4]?.innerText.trim() || "N/A"
+                };
+            });
+        });
 
-    if (!sensorData.length) {
-        console.error("❌ No sensor data extracted!");
-        return;
+        if (!sensorData.length) {
+            console.error("❌ No sensor data extracted!");
+            return;
+        }
+
+        console.log("✅ Scraped Data:", sensorData);
+        saveJSON(sensorData);
+
+    } catch (error) {
+        console.error("❌ Puppeteer failed to launch:", error);
+    } finally {
+        if (browser) await browser.close();
     }
-
-    console.log("✅ Scraped Data:", sensorData);
-    saveJSON(sensorData);
 }
 
 // ✅ Save Scraped Data to JSON (Overwrites existing file)
