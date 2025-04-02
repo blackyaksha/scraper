@@ -40,8 +40,9 @@ async function scrapeSensorData() {
     console.log("🌍 Fetching data from Streamlit...");
     
     const browser = await puppeteer.launch({
-        headless: 'new',
-        args: ['--no-sandbox', '--disable-setuid-sandbox'] // Adding flags for running in restricted environments
+        headless: "new",
+        executablePath: "/opt/render/.cache/puppeteer/chrome/linux-134.0.6998.165/chrome-linux64/chrome",
+        args: ["--no-sandbox", "--disable-setuid-sandbox"]
     });
     
     const page = await browser.newPage();
