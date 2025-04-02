@@ -6,7 +6,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node FloodDataScraper.js",
-    "postinstall": "npx puppeteer browsers install chrome"
+    "postinstall": "npx puppeteer install && echo \"✅ Puppeteer installed successfully\""
   },
   "keywords": [],
   "author": "",
