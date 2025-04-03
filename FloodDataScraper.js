@@ -35,21 +35,34 @@ const SENSOR_CATEGORIES = {
     earthquake_sensors: ["QCDRRMO", "QCDRRMO REC"]
 };
 
-// Function to scrape sensor data
-async function scrapeSensorData() {
+// Function to scrape sensor data with retry mechanism
+async function scrapeSensorData(attempts = 3) {
     console.log("🌍 Fetching data from Streamlit...");
 
     let browser;
     try {
         browser = await puppeteer.launch({
-            headless: "new",
+            headless: "new", // Change to false for debugging
             executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || puppeteer.executablePath(),
             args: ["--no-sandbox", "--disable-setuid-sandbox"],
-            userDataDir: './.puppeteer_data',
+            userDataDir: './.puppeteer_data'
         });
 
         const page = await browser.newPage();
-        await page.goto("https://app.iriseup.ph/sensor_networks", { waitUntil: "networkidle2" });
+
+        // Retry logic
+        for (let i = 0; i < attempts; i++) {
+            try {
+                await page.goto("https://app.iriseup.ph/sensor_networks", { 
+                    waitUntil: "networkidle2",
+                    timeout: 60000 // Increased timeout to 60s
+                });
+                break; // Success, exit loop
+            } catch (error) {
+                console.warn(`⚠️ Retry attempt (${i + 1}/${attempts}) due to timeout.`);
+                if (i === attempts - 1) throw error; // Fail after last attempt
+            }
+        }
 
         // Extract sensor data from the page
         const sensorData = await page.evaluate(() => {
@@ -70,48 +83,23 @@ async function scrapeSensorData() {
             return;
         }
 
-        // Categorize the sensor data
-        const categorizedData = categorizeSensorData(sensorData);
-
-        console.log("✅ Scraped Data:", categorizedData);
-        saveJSON(categorizedData);
+        console.log("✅ Scraped Data:", sensorData);
+        saveJSON(sensorData);  // Save the data to a file
 
     } catch (error) {
-        console.error("❌ Puppeteer failed to launch:", error);
+        console.error("❌ Puppeteer failed:", error);
     } finally {
-        if (browser) await browser.close();
+        if (browser) await browser.close();  // Ensure browser is closed after scraping
     }
 }
 
-// Categorize sensor data based on SENSOR_CATEGORIES
-function categorizeSensorData(sensorData) {
-    const categorized = {
-        rain_gauge: [],
-        flood_sensors: [],
-        street_flood_sensors: [],
-        flood_risk_index: [],
-        earthquake_sensors: []
-    };
-
-    sensorData.forEach(sensor => {
-        for (const [category, locations] of Object.entries(SENSOR_CATEGORIES)) {
-            if (locations.includes(sensor["SENSOR NAME"])) {
-                categorized[category].push(sensor);
-                break;  // Stop searching once categorized
-            }
-        }
-    });
-
-    return categorized;
-}
-
-// Save categorized sensor data to a JSON file
+// Save scraped data to a JSON file
 function saveJSON(sensorData) {
     fs.writeFileSync(SENSOR_DATA_FILE, JSON.stringify(sensorData, null, 4));
     console.log("✅ Sensor data saved to JSON.");
 }
 
-// API route to serve sensor data as a file
+// API route to serve sensor data
 app.get("/api/sensor-data", (req, res) => {
     if (fs.existsSync(SENSOR_DATA_FILE)) {
         res.sendFile(__dirname + "/" + SENSOR_DATA_FILE);
@@ -121,7 +109,7 @@ app.get("/api/sensor-data", (req, res) => {
 });
 
 // Run the scraper every 60 seconds
-setInterval(scrapeSensorData, 60000);
+setInterval(() => scrapeSensorData(), 60000);
 
 // Start Express server and initial scraping
 app.listen(PORT, () => {
