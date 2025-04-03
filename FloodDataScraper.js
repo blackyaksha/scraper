@@ -10,18 +10,42 @@ app.use(cors());
 
 const SENSOR_DATA_FILE = "sensor_data.json";
 
+// ✅ Sensor Categories
+const SENSOR_CATEGORIES = {
+    rain_gauge: [
+        "QCPU", "Masambong", "Batasan Hills", "Ugong Norte", "Ramon Magsaysay HS",
+        "UP Village", "Dona Imelda", "Kaligayahan", "Emilio Jacinto Sr HS", "Payatas ES",
+        "Ramon Magsaysay Brgy Hall", "Phil-Am", "Holy Spirit", "Libis",
+        "South Triangle", "Nagkaisang Nayon", "Tandang Sora", "Talipapa",
+        "Brgy Fairview (REC)", "Brgy Baesa Hall", "Brgy N.S Amoranto Hall", "Brgy Valencia Hall"
+    ],
+    flood_sensors: [
+        "North Fairview", "Batasan-San Mateo", "Bahay Toro", "Sta Cruz", "San Bartolome"
+    ],
+    street_flood_sensors: [
+        "N.S. Amoranto Street", "New Greenland", "Kalantiaw Street", "F. Calderon Street",
+        "Christine Street", "Ramon Magsaysay Brgy Hall", "Phil-Am", "Holy Spirit",
+        "Libis", "South Triangle", "Nagkaisang Nayon", "Tandang Sora", "Talipapa"
+    ],
+    flood_risk_index: [
+        "N.S. Amoranto Street", "New Greenland", "Kalantiaw Street", "F. Calderon Street",
+        "Christine Street", "Ramon Magsaysay Brgy Hall", "Phil-Am", "Holy Spirit",
+        "Libis", "South Triangle", "Nagkaisang Nayon", "Tandang Sora", "Talipapa"
+    ],
+    earthquake_sensors: ["QCDRRMO", "QCDRRMO REC"]
+};
+
 // Function to scrape sensor data
 async function scrapeSensorData() {
     console.log("🌍 Fetching data from Streamlit...");
 
     let browser;
     try {
-        // Launch Puppeteer with custom executable path and cache configuration
         browser = await puppeteer.launch({
-            headless: "new", // Running in headless mode
-            executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || puppeteer.executablePath(), // Allow environment override
-            args: ["--no-sandbox", "--disable-setuid-sandbox"], // Security settings for headless environment
-            userDataDir: './.puppeteer_data', // Custom data directory for user data (caching etc.)
+            headless: "new",
+            executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || puppeteer.executablePath(),
+            args: ["--no-sandbox", "--disable-setuid-sandbox"],
+            userDataDir: './.puppeteer_data',
         });
 
         const page = await browser.newPage();
@@ -46,19 +70,44 @@ async function scrapeSensorData() {
             return;
         }
 
-        console.log("✅ Scraped Data:", sensorData);
-        saveJSON(sensorData);  // Save the data to a file
+        // Categorize the sensor data
+        const categorizedData = categorizeSensorData(sensorData);
+
+        console.log("✅ Scraped Data:", categorizedData);
+        saveJSON(categorizedData);
 
     } catch (error) {
         console.error("❌ Puppeteer failed to launch:", error);
     } finally {
-        if (browser) await browser.close();  // Ensure browser is closed after scraping
+        if (browser) await browser.close();
     }
 }
 
-// Save scraped data to a JSON file
+// Categorize sensor data based on SENSOR_CATEGORIES
+function categorizeSensorData(sensorData) {
+    const categorized = {
+        rain_gauge: [],
+        flood_sensors: [],
+        street_flood_sensors: [],
+        flood_risk_index: [],
+        earthquake_sensors: []
+    };
+
+    sensorData.forEach(sensor => {
+        for (const [category, locations] of Object.entries(SENSOR_CATEGORIES)) {
+            if (locations.includes(sensor["SENSOR NAME"])) {
+                categorized[category].push(sensor);
+                break;  // Stop searching once categorized
+            }
+        }
+    });
+
+    return categorized;
+}
+
+// Save categorized sensor data to a JSON file
 function saveJSON(sensorData) {
-    fs.writeFileSync(SENSOR_DATA_FILE, JSON.stringify(sensorData, null, 4));  // Overwrite file with new data
+    fs.writeFileSync(SENSOR_DATA_FILE, JSON.stringify(sensorData, null, 4));
     console.log("✅ Sensor data saved to JSON.");
 }
 
