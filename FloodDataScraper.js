@@ -8,12 +8,6 @@ const PORT = 5000;
 
 app.use(cors());
 
-const { createClient } = require("@supabase/supabase-js");
-
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY; // Or anon key (less secure for writing)
-const supabase = createClient(supabaseUrl, supabaseKey);
-
 const SENSOR_DATA_FILE = "sensor_data.json";
 
 // ✅ In-memory variable to store sensor data
@@ -75,7 +69,7 @@ async function scrapeSensorData(attempts = 3) {
                 });
                 break;
             } catch (error) {
-                console.warn(`⚠️ Retry attempt (${i + 1}/${attempts}) due to timeout.`);
+                console.warn(⚠️ Retry attempt (${i + 1}/${attempts}) due to timeout.);
                 if (i === attempts - 1) throw error;
             }
         }
@@ -109,30 +103,9 @@ async function scrapeSensorData(attempts = 3) {
 }
 
 // ✅ Store data in memory
-async function saveToMemory(sensorData) {
+function saveToMemory(sensorData) {
     latestSensorData = sensorData;
     console.log("✅ Sensor data stored in memory.");
-
-    // Insert to Supabase
-    try {
-        const { data, error } = await supabase
-            .from("sensor_data")
-            .insert(sensorData.map(item => ({
-                sensor_name: item["SENSOR NAME"],
-                obs_time: item["OBS TIME"],
-                normal_level: item["NORMAL LEVEL"],
-                current: item["CURRENT"],
-                description: item["DESCRIPTION"]
-            })));
-
-        if (error) {
-            console.error("❌ Supabase insert error:", error);
-        } else {
-            console.log(`✅ ${data.length} records inserted to Supabase.`);
-        }
-    } catch (err) {
-        console.error("❌ Supabase error:", err);
-    }
 }
 
 // ✅ API route that returns in-memory sensor data
@@ -149,6 +122,6 @@ setInterval(() => scrapeSensorData(), 60000);
 
 // 🚀 Start server
 app.listen(PORT, () => {
-    console.log(`🚀 Server running at http://127.0.0.1:${PORT}/`);
+    console.log(🚀 Server running at http://127.0.0.1:${PORT}/);
     scrapeSensorData(); // Initial scrape
 });
