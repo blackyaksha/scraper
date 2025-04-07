@@ -10,6 +10,9 @@ app.use(cors());
 
 const SENSOR_DATA_FILE = "sensor_data.json";
 
+// ✅ In-memory variable to store sensor data
+let latestSensorData = [];
+
 // ✅ Sensor Categories
 const SENSOR_CATEGORIES = {
     rain_gauge: [
@@ -43,14 +46,14 @@ const SENSOR_CATEGORIES = {
     earthquake_sensors: ["QCDRRMO", "QCDRRMO REC"]
 };
 
-// Function to scrape sensor data with retry mechanism
+// 🕷️ Scrape sensor data
 async function scrapeSensorData(attempts = 3) {
     console.log("🌍 Fetching data from Streamlit...");
 
     let browser;
     try {
         browser = await puppeteer.launch({
-            headless: "new", // Change to false for debugging
+            headless: "new",
             executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || puppeteer.executablePath(),
             args: ["--no-sandbox", "--disable-setuid-sandbox"],
             userDataDir: './.puppeteer_data'
@@ -58,21 +61,19 @@ async function scrapeSensorData(attempts = 3) {
 
         const page = await browser.newPage();
 
-        // Retry logic
         for (let i = 0; i < attempts; i++) {
             try {
-                await page.goto("https://app.iriseup.ph/sensor_networks", { 
+                await page.goto("https://app.iriseup.ph/sensor_networks", {
                     waitUntil: "networkidle2",
-                    timeout: 60000 // Increased timeout to 60s
+                    timeout: 60000
                 });
-                break; // Success, exit loop
+                break;
             } catch (error) {
                 console.warn(`⚠️ Retry attempt (${i + 1}/${attempts}) due to timeout.`);
-                if (i === attempts - 1) throw error; // Fail after last attempt
+                if (i === attempts - 1) throw error;
             }
         }
 
-        // Extract sensor data from the page
         const sensorData = await page.evaluate(() => {
             return Array.from(document.querySelectorAll("table tbody tr")).map(row => {
                 const cols = row.querySelectorAll("td");
@@ -92,35 +93,35 @@ async function scrapeSensorData(attempts = 3) {
         }
 
         console.log("✅ Scraped Data:", sensorData);
-        saveJSON(sensorData);  // Save the data to a file
+        saveToMemory(sensorData);  // ✅ Store in memory instead of file
 
     } catch (error) {
         console.error("❌ Puppeteer failed:", error);
     } finally {
-        if (browser) await browser.close();  // Ensure browser is closed after scraping
+        if (browser) await browser.close();
     }
 }
 
-// Save scraped data to a JSON file
-function saveJSON(sensorData) {
-    fs.writeFileSync(SENSOR_DATA_FILE, JSON.stringify(sensorData, null, 4));
-    console.log("✅ Sensor data saved to JSON.");
+// ✅ Store data in memory
+function saveToMemory(sensorData) {
+    latestSensorData = sensorData;
+    console.log("✅ Sensor data stored in memory.");
 }
 
-// API route to serve sensor data
+// ✅ API route that returns in-memory sensor data
 app.get("/api/sensor-data", (req, res) => {
-    if (fs.existsSync(SENSOR_DATA_FILE)) {
-        res.sendFile(__dirname + "/" + SENSOR_DATA_FILE);
+    if (latestSensorData.length > 0) {
+        res.json(latestSensorData);
     } else {
         res.status(404).json({ error: "No data available yet" });
     }
 });
 
-// Run the scraper every 60 seconds
+// 🔁 Run scraper every 60s
 setInterval(() => scrapeSensorData(), 60000);
 
-// Start Express server and initial scraping
+// 🚀 Start server
 app.listen(PORT, () => {
     console.log(`🚀 Server running at http://127.0.0.1:${PORT}/`);
-    scrapeSensorData();  // Initial scrape on startup
+    scrapeSensorData(); // Initial scrape
 });
