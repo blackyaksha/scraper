@@ -69,7 +69,7 @@ async function scrapeSensorData(attempts = 3) {
                 });
                 break;
             } catch (error) {
-                console.warn(⚠️ Retry attempt (${i + 1}/${attempts}) due to timeout.);
+                console.warn(`⚠️ Retry attempt (${i + 1}/${attempts}) due to timeout.`);
                 if (i === attempts - 1) throw error;
             }
         }
