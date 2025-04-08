@@ -122,6 +122,6 @@ setInterval(() => scrapeSensorData(), 60000);
 
 // 🚀 Start server
 app.listen(PORT, () => {
-    console.log(🚀 Server running at http://127.0.0.1:${PORT}/);
+    console.log(`🚀 Server running at http://127.0.0.1:${PORT}/`);
     scrapeSensorData(); // Initial scrape
 });
