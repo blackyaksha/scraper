@@ -118,7 +118,7 @@ def scrape_sensor_data():
     try:
         logger.info("Initializing Chrome WebDriver...")
         driver = setup_chrome_driver()
-        url = "https://app.iriseup.ph/sensor_networks"
+        url = "https://web.iriseup.ph/sensor_networks"
         logger.info(f"🌍 Fetching data from: {url}")
         if not wait_for_page_load(driver, url):
             raise TimeoutError("Failed to load page after multiple attempts")
