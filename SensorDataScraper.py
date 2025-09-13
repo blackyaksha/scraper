@@ -66,7 +66,7 @@ def setup_chrome_driver():
     """Setup Chrome WebDriver with proper options and error handling"""
     try:
         chrome_options = Options()
-        chrome_options.binary_location = "/usr/bin/chromium-browser"  # ✅ correct path in Debian slim
+        chrome_options.binary_location = "/usr/bin/chromium"  # ✅ correct path on Render
         chrome_options.add_argument("--headless=new")
         chrome_options.add_argument("--no-sandbox")
         chrome_options.add_argument("--disable-dev-shm-usage")
