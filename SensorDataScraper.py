@@ -17,8 +17,8 @@ import os
 
 # Set all internal file reads/writes to be relative to this script
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-SENSOR_DATA_FILE = os.path.join("/tmp", "sensor_data.json")  # fixed
-CSV_FILE_PATH = os.path.join("/tmp", "sensor_data.csv")      # fixed
+SENSOR_DATA_FILE = os.path.join(/tmp, "sensor_data.json")
+CSV_FILE_PATH = os.path.join(/tmp, "sensor_data.csv")
 
 # Configure logging
 logging.basicConfig(
@@ -30,19 +30,30 @@ logger = logging.getLogger(__name__)
 # FastAPI Web App
 app = FastAPI(title="Flood Data Scraper API")
 
+# Ensure sensor_data.json exists on startup
+try:
+    if not os.path.exists(SENSOR_DATA_FILE):
+        print("Sensor data file not found, running initial scrape...")
+        scrape_sensor_data()
+except Exception as e:
+    print(f"Error running initial data scrape: {e}")
+
+# Configure CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allows all origins
+    allow_credentials=True,
+    allow_methods=["*"],  # Allows all methods
+    allow_headers=["*"],  # Allows all headers
+)
+
 SENSOR_CATEGORIES = {
     "rain_gauge": [
         "QCPU", "Masambong", "Batasan Hills", "Ugong Norte", "Ramon Magsaysay HS",
         "UP Village", "Dona Imelda", "Kaligayahan", "Emilio Jacinto Sr HS", "Payatas ES",
         "Ramon Magsaysay Brgy Hall", "Phil-Am", "Holy Spirit", "Libis",
         "South Triangle", "Nagkaisang Nayon", "Tandang Sora", "Talipapa",
-        "Balingasa High School", "Toro Hills Elementary School", "Quezon City University San Francisco Campus", 
-        "Maharlika Brgy Hall", "Bagong Silangan Evacuation Center", "Dona Juana Elementary School",
-        "Quirino High School", "Old Balara Elementary School", "Pansol Kaingin 1 Brgy Satellite Office",
-        "Jose P Laurel Senior High School", "Pinyahan Multipurose Hall", "Sikatuna Brgy Hall",
-        "Kalusugan Brgy Hall", "Laging Handa Barangay Hall", "Amoranto Sport Complex", "Maligaya High School",
-        "San Agustin Brgy Hall", "Jose Maria Panganiban Senior High School", "North Fairview Elementary School",
-        "Sauyo Elementary School", "New Era Brgy Hall", "Ismael Mathay Senior High School"
+        "Brgy Fairview (REC)", "Brgy Baesa Hall", "Brgy N.S Amoranto Hall", "Brgy Valencia Hall"
     ],
     "flood_sensors": [
         "North Fairview", "Batasan-San Mateo", "Bahay Toro", "Sta Cruz", "San Bartolome"
@@ -65,7 +76,8 @@ def setup_chrome_driver():
     try:
         chrome_options = Options()
         chrome_options.binary_location = "/usr/bin/chromium"
-        chrome_options.add_argument("--headless=new")
+        chrome_options.add_argument("--headless")
+        chrome_options.add_argument("--headless=new")  # Use new headless mode
         chrome_options.add_argument("--no-sandbox")
         chrome_options.add_argument("--disable-dev-shm-usage")
         chrome_options.add_argument("--disable-gpu")
@@ -218,6 +230,7 @@ async def get_sensor_data():
             data = json.load(f)
         return data
     except (FileNotFoundError, json.JSONDecodeError):
+        # Return a minimal fallback structure, not a 404, so frontend can work (even if data is empty)
         print("Warning: sensor_data.json not found or invalid, returning empty data.")
         return {key: [] for key in SENSOR_CATEGORIES.keys()}
 
@@ -231,15 +244,7 @@ def start_auto_scraper():
         print("⏳ Waiting 60 seconds before the next scrape...")
         time.sleep(60)
 
-# Ensure sensor_data.json exists on startup
-try:
-    if not os.path.exists(SENSOR_DATA_FILE):
-        print("Sensor data file not found, running initial scrape...")
-        scrape_sensor_data()
-except Exception as e:
-    print(f"Error running initial data scrape: {e}")
-
-# Always start the background scraper thread
+# Always start the background scraper thread (recommended for FastAPI deployment)
 scraper_thread = threading.Thread(target=start_auto_scraper, daemon=True)
 scraper_thread.start()
 
