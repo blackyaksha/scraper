@@ -182,5 +182,6 @@ scraper_thread = threading.Thread(target=start_auto_scraper, daemon=True)
 scraper_thread.start()
 
 if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run("SensorDataScraper:app", host="0.0.0.0", port=10000, reload=False)
+    import uvicorn, os
+    port = int(os.environ.get("PORT", 10000))
+    uvicorn.run("SensorDataScraper:app", host="0.0.0.0", port=port, reload=False)
