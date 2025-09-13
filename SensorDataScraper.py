@@ -10,6 +10,7 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from webdriver_manager.chrome import ChromeDriverManager
 from typing import Dict, List, Any
 import logging
 import os
@@ -28,6 +29,14 @@ logger = logging.getLogger(__name__)
 
 # FastAPI Web App
 app = FastAPI(title="Flood Data Scraper API")
+
+# Ensure sensor_data.json exists on startup
+try:
+    if not os.path.exists(SENSOR_DATA_FILE):
+        print("Sensor data file not found, running initial scrape...")
+        scrape_sensor_data()
+except Exception as e:
+    print(f"Error running initial data scrape: {e}")
 
 # Configure CORS
 app.add_middleware(
@@ -66,13 +75,30 @@ def setup_chrome_driver():
     """Setup Chrome WebDriver with proper options and error handling"""
     try:
         chrome_options = Options()
-        chrome_options.binary_location = "/usr/bin/chromium"  # ✅ correct path on Render
-        chrome_options.add_argument("--headless=new")
+        chrome_options.binary_location = "/usr/bin/chromium"
+        chrome_options.add_argument("--headless")
+        chrome_options.add_argument("--headless=new")  # Use new headless mode
         chrome_options.add_argument("--no-sandbox")
         chrome_options.add_argument("--disable-dev-shm-usage")
         chrome_options.add_argument("--disable-gpu")
         chrome_options.add_argument("--window-size=1920,1080")
-        
+        chrome_options.add_argument("--disable-extensions")
+        chrome_options.add_argument("--disable-software-rasterizer")
+        chrome_options.add_argument("--disable-features=VizDisplayCompositor")
+        chrome_options.add_argument("--disable-features=IsolateOrigins,site-per-process")
+        chrome_options.add_argument("--disable-features=NetworkService")
+        chrome_options.add_argument("--disable-features=NetworkServiceInProcess")
+        chrome_options.add_argument("--disable-features=NetworkServiceInProcess2")
+        chrome_options.add_argument("--disable-gpu-sandbox")
+        chrome_options.add_argument("--disable-accelerated-2d-canvas")
+        chrome_options.add_argument("--disable-accelerated-jpeg-decoding")
+        chrome_options.add_argument("--disable-accelerated-mjpeg-decode")
+        chrome_options.add_argument("--disable-accelerated-video-decode")
+        chrome_options.add_argument("--disable-accelerated-video-encode")
+        chrome_options.add_argument("--disable-webgl")
+        chrome_options.add_argument("--disable-webgl2")
+        chrome_options.add_argument("--disable-3d-apis")
+        # Initialize ChromeDriver
         service = Service("/usr/bin/chromedriver")
         driver = webdriver.Chrome(service=service, options=chrome_options)
         driver.set_page_load_timeout(60)
@@ -204,7 +230,7 @@ async def get_sensor_data():
             data = json.load(f)
         return data
     except (FileNotFoundError, json.JSONDecodeError):
-        # Return a minimal fallback structure
+        # Return a minimal fallback structure, not a 404, so frontend can work (even if data is empty)
         print("Warning: sensor_data.json not found or invalid, returning empty data.")
         return {key: [] for key in SENSOR_CATEGORIES.keys()}
 
@@ -218,19 +244,10 @@ def start_auto_scraper():
         print("⏳ Waiting 60 seconds before the next scrape...")
         time.sleep(60)
 
-# ✅ Ensure sensor_data.json is refreshed at startup
-try:
-    print("🚀 Running initial data scrape before starting API...")
-    scrape_sensor_data()
-except Exception as e:
-    print(f"❌ Error running initial data scrape: {e}")
-
-# ✅ Start the background scraper thread
+# Always start the background scraper thread (recommended for FastAPI deployment)
 scraper_thread = threading.Thread(target=start_auto_scraper, daemon=True)
 scraper_thread.start()
 
 if __name__ == "__main__":
     import uvicorn
-    # Make sure to point uvicorn at this file correctly
-    # If your file is named SensorDataScraper.py, use "SensorDataScraper:app"
     uvicorn.run("SensorDataScraper:app", host="0.0.0.0", port=10000, reload=False)
