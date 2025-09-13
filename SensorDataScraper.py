@@ -10,7 +10,6 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from webdriver_manager.chrome import ChromeDriverManager
 from typing import Dict, List, Any
 import logging
 import os
@@ -29,14 +28,6 @@ logger = logging.getLogger(__name__)
 
 # FastAPI Web App
 app = FastAPI(title="Flood Data Scraper API")
-
-# Ensure sensor_data.json exists on startup
-try:
-    if not os.path.exists(SENSOR_DATA_FILE):
-        print("Sensor data file not found, running initial scrape...")
-        scrape_sensor_data()
-except Exception as e:
-    print(f"Error running initial data scrape: {e}")
 
 # Configure CORS
 app.add_middleware(
@@ -218,7 +209,7 @@ async def get_sensor_data():
             data = json.load(f)
         return data
     except (FileNotFoundError, json.JSONDecodeError):
-        # Return a minimal fallback structure, not a 404, so frontend can work (even if data is empty)
+        # Return a minimal fallback structure
         print("Warning: sensor_data.json not found or invalid, returning empty data.")
         return {key: [] for key in SENSOR_CATEGORIES.keys()}
 
@@ -232,7 +223,15 @@ def start_auto_scraper():
         print("⏳ Waiting 60 seconds before the next scrape...")
         time.sleep(60)
 
-# Always start the background scraper thread (recommended for FastAPI deployment)
+# ✅ Ensure sensor_data.json exists (moved here after function definitions)
+try:
+    if not os.path.exists(SENSOR_DATA_FILE):
+        print("Sensor data file not found, running initial scrape...")
+        scrape_sensor_data()
+except Exception as e:
+    print(f"Error running initial data scrape: {e}")
+
+# Always start the background scraper thread
 scraper_thread = threading.Thread(target=start_auto_scraper, daemon=True)
 scraper_thread.start()
 
