@@ -66,18 +66,13 @@ def setup_chrome_driver():
     """Setup Chrome WebDriver with proper options and error handling"""
     try:
         chrome_options = Options()
-        chrome_options.binary_location = "/usr/bin/chromium"
-        chrome_options.add_argument("--headless=new")  # modern headless mode
+        chrome_options.binary_location = "/usr/bin/chromium-browser"  # ✅ correct path in Debian slim
+        chrome_options.add_argument("--headless=new")
         chrome_options.add_argument("--no-sandbox")
         chrome_options.add_argument("--disable-dev-shm-usage")
         chrome_options.add_argument("--disable-gpu")
         chrome_options.add_argument("--window-size=1920,1080")
-
-        # Add SSL/TLS fix
-        chrome_options.add_argument("--ignore-certificate-errors")
-        chrome_options.add_argument("--ignore-ssl-errors=yes")
-        chrome_options.add_argument("--allow-insecure-localhost")
-
+        
         service = Service("/usr/bin/chromedriver")
         driver = webdriver.Chrome(service=service, options=chrome_options)
         driver.set_page_load_timeout(60)
