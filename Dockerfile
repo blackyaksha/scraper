@@ -1,19 +1,21 @@
 FROM python:3.10-slim
 
+# Prevent Python from writing .pyc files and force unbuffered logs
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
 WORKDIR /app
 
-# Install system dependencies and Chromium + ChromeDriver
+# Install system dependencies and Chromium + Chromedriver
 RUN apt-get update && apt-get install -y \
+    chromium \
+    chromium-driver \
     wget \
-    unzip \
     curl \
+    unzip \
     gnupg \
     ca-certificates \
     fonts-liberation \
-    libappindicator3-1 \
     libasound2 \
     libatk-bridge2.0-0 \
     libatk1.0-0 \
@@ -27,14 +29,13 @@ RUN apt-get update && apt-get install -y \
     libxcomposite1 \
     libxdamage1 \
     libxrandr2 \
-    xdg-utils \
-    chromium \
-    chromium-driver \
     --no-install-recommends && \
     rm -rf /var/lib/apt/lists/*
 
-# Copy and install Python dependencies
+# Copy requirements first
 COPY requirements.txt /app/
+
+# Install Python dependencies
 RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
 
@@ -43,4 +44,5 @@ COPY . /app/
 
 EXPOSE 10000
 
+# ✅ Ensure uvicorn points to your file + app
 CMD ["uvicorn", "SensorDataScraper:app", "--host", "0.0.0.0", "--port", "10000"]
