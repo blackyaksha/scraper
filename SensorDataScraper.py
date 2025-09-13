@@ -87,7 +87,7 @@ def setup_chrome_driver():
         chrome_options.add_argument("--ignore-ssl-errors=yes")
         chrome_options.add_argument("--allow-insecure-localhost")
 
-        service = Service(ChromeDriverManager().install())
+        service = Service("/usr/bin/chromedriver")
         driver = webdriver.Chrome(service=service, options=chrome_options)
         driver.set_page_load_timeout(60)
         driver.implicitly_wait(30)
