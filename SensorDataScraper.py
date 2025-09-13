@@ -223,18 +223,19 @@ def start_auto_scraper():
         print("⏳ Waiting 60 seconds before the next scrape...")
         time.sleep(60)
 
-# ✅ Ensure sensor_data.json exists (moved here after function definitions)
+# ✅ Ensure sensor_data.json is refreshed at startup
 try:
-    if not os.path.exists(SENSOR_DATA_FILE):
-        print("Sensor data file not found, running initial scrape...")
-        scrape_sensor_data()
+    print("🚀 Running initial data scrape before starting API...")
+    scrape_sensor_data()
 except Exception as e:
-    print(f"Error running initial data scrape: {e}")
+    print(f"❌ Error running initial data scrape: {e}")
 
-# Always start the background scraper thread
+# ✅ Start the background scraper thread
 scraper_thread = threading.Thread(target=start_auto_scraper, daemon=True)
 scraper_thread.start()
 
 if __name__ == "__main__":
     import uvicorn
+    # Make sure to point uvicorn at this file correctly
+    # If your file is named SensorDataScraper.py, use "SensorDataScraper:app"
     uvicorn.run("SensorDataScraper:app", host="0.0.0.0", port=10000, reload=False)
