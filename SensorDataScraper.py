@@ -10,12 +10,11 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from webdriver_manager.chrome import ChromeDriverManager
 from typing import Dict, List, Any
 import logging
 import os
 
-# Set all internal file reads/writes to be relative to this script
+# Set all internal file reads/writes to be relative to /tmp
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 SENSOR_DATA_FILE = os.path.join("/tmp", "sensor_data.json")
 CSV_FILE_PATH = os.path.join("/tmp", "sensor_data.csv")
@@ -23,28 +22,20 @@ CSV_FILE_PATH = os.path.join("/tmp", "sensor_data.csv")
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
+    format="%(asctime)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
 # FastAPI Web App
 app = FastAPI(title="Flood Data Scraper API")
 
-# Ensure sensor_data.json exists on startup
-try:
-    if not os.path.exists(SENSOR_DATA_FILE):
-        print("Sensor data file not found, running initial scrape...")
-        scrape_sensor_data()
-except Exception as e:
-    print(f"Error running initial data scrape: {e}")
-
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allows all origins
+    allow_origins=["*"],  # Allow all origins
     allow_credentials=True,
-    allow_methods=["*"],  # Allows all methods
-    allow_headers=["*"],  # Allows all headers
+    allow_methods=["*"],  # Allow all methods
+    allow_headers=["*"],  # Allow all headers
 )
 
 SENSOR_CATEGORIES = {
@@ -71,12 +62,12 @@ SENSOR_CATEGORIES = {
     "earthquake_sensors": ["QCDRRMO", "QCDRRMO REC"]
 }
 
+
 def setup_chrome_driver():
     """Setup Chrome WebDriver with proper options and error handling"""
     try:
         chrome_options = Options()
         chrome_options.binary_location = "/usr/bin/chromium"
-        chrome_options.add_argument("--headless")
         chrome_options.add_argument("--headless=new")  # Use new headless mode
         chrome_options.add_argument("--no-sandbox")
         chrome_options.add_argument("--disable-dev-shm-usage")
@@ -86,9 +77,7 @@ def setup_chrome_driver():
         chrome_options.add_argument("--disable-software-rasterizer")
         chrome_options.add_argument("--disable-features=VizDisplayCompositor")
         chrome_options.add_argument("--disable-features=IsolateOrigins,site-per-process")
-        chrome_options.add_argument("--disable-features=NetworkService")
-        chrome_options.add_argument("--disable-features=NetworkServiceInProcess")
-        chrome_options.add_argument("--disable-features=NetworkServiceInProcess2")
+        chrome_options.add_argument("--disable-features=NetworkService,NetworkServiceInProcess,NetworkServiceInProcess2")
         chrome_options.add_argument("--disable-gpu-sandbox")
         chrome_options.add_argument("--disable-accelerated-2d-canvas")
         chrome_options.add_argument("--disable-accelerated-jpeg-decoding")
@@ -98,7 +87,7 @@ def setup_chrome_driver():
         chrome_options.add_argument("--disable-webgl")
         chrome_options.add_argument("--disable-webgl2")
         chrome_options.add_argument("--disable-3d-apis")
-        # Initialize ChromeDriver
+
         service = Service("/usr/bin/chromedriver")
         driver = webdriver.Chrome(service=service, options=chrome_options)
         driver.set_page_load_timeout(60)
@@ -107,6 +96,7 @@ def setup_chrome_driver():
     except Exception as e:
         logger.error(f"Failed to initialize Chrome WebDriver: {str(e)}")
         raise
+
 
 def wait_for_page_load(driver, url, max_retries=3):
     """Wait for page to load with retry logic"""
@@ -125,6 +115,7 @@ def wait_for_page_load(driver, url, max_retries=3):
             time.sleep(5)
     return False
 
+
 def scrape_sensor_data():
     driver = None
     try:
@@ -132,6 +123,7 @@ def scrape_sensor_data():
         driver = setup_chrome_driver()
         url = "https://web.iriseup.ph/sensor_networks"
         logger.info(f"🌍 Fetching data from: {url}")
+
         if not wait_for_page_load(driver, url):
             raise TimeoutError("Failed to load page after multiple attempts")
 
@@ -155,10 +147,12 @@ def scrape_sensor_data():
 
         if not sensor_data:
             raise ValueError("No sensor data extracted. Check website structure.")
+
         logger.info(f"✅ Successfully scraped {len(sensor_data)} sensor records")
         save_csv(sensor_data)
         convert_csv_to_json()
         logger.info("✅ Sensor data updated successfully")
+
     except Exception as e:
         logger.error(f"❌ Scraping Failed: {str(e)}")
         raise
@@ -169,31 +163,38 @@ def scrape_sensor_data():
             except Exception as e:
                 logger.error(f"Error closing WebDriver: {str(e)}")
 
+
 def save_csv(sensor_data):
     df = pd.DataFrame(sensor_data)
     df.to_csv(CSV_FILE_PATH, index=False)
     print("✅ CSV file saved successfully with all sensor data.")
 
+
 def convert_csv_to_json():
     df = pd.read_csv(CSV_FILE_PATH)
     categorized_data = {category: [] for category in SENSOR_CATEGORIES}
+
     for _, row in df.iterrows():
         sensor_name = row["SENSOR NAME"]
         current_value = row["CURRENT"]
         normal_value = row["NORMAL LEVEL"] if "NORMAL LEVEL" in df.columns else "N/A"
         description = row["DESCRIPTION"] if "DESCRIPTION" in df.columns else "N/A"
+
         sensor_entry = {
             "SENSOR NAME": sensor_name,
             "CURRENT": current_value,
         }
+
         if "m" in str(current_value):
             category = "street_flood_sensors"
             sensor_entry["NORMAL LEVEL"] = normal_value
             sensor_entry["DESCRIPTION"] = description
         else:
             category = "flood_risk_index"
+
         if sensor_name in SENSOR_CATEGORIES[category]:
             categorized_data[category].append(sensor_entry)
+
     for category, sensors in SENSOR_CATEGORIES.items():
         if category not in ["street_flood_sensors", "flood_risk_index"]:
             for sensor_name in sensors:
@@ -219,9 +220,11 @@ def convert_csv_to_json():
                         sensor_entry["NORMAL LEVEL"] = "N/A"
                         sensor_entry["DESCRIPTION"] = "N/A"
                     categorized_data[category].append(sensor_entry)
+
     with open(SENSOR_DATA_FILE, "w") as f:
         json.dump(categorized_data, f, indent=4)
     print("✅ JSON data structured correctly with Street Flood Sensor Check.")
+
 
 @app.get("/api/sensor-data", response_model=Dict[str, List[Dict[str, Any]]])
 async def get_sensor_data():
@@ -230,9 +233,9 @@ async def get_sensor_data():
             data = json.load(f)
         return data
     except (FileNotFoundError, json.JSONDecodeError):
-        # Return a minimal fallback structure, not a 404, so frontend can work (even if data is empty)
         print("Warning: sensor_data.json not found or invalid, returning empty data.")
         return {key: [] for key in SENSOR_CATEGORIES.keys()}
+
 
 def start_auto_scraper():
     while True:
@@ -244,10 +247,19 @@ def start_auto_scraper():
         print("⏳ Waiting 60 seconds before the next scrape...")
         time.sleep(60)
 
-# Always start the background scraper thread (recommended for FastAPI deployment)
+
+# ✅ Ensure sensor_data.json exists on startup
+try:
+    if not os.path.exists(SENSOR_DATA_FILE):
+        print("Sensor data file not found, running initial scrape...")
+        scrape_sensor_data()
+except Exception as e:
+    print(f"Error running initial data scrape: {e}")
+
+# ✅ Start background scraper thread
 scraper_thread = threading.Thread(target=start_auto_scraper, daemon=True)
 scraper_thread.start()
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("SensorDataScraper:app", host="0.0.0.0", port=10000, reload=False)
+    uvicorn.run("main:app", host="0.0.0.0", port=10000, reload=False)
