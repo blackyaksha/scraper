@@ -16,8 +16,13 @@ import os
 
 # Set all internal file reads/writes to be relative to /tmp
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-SENSOR_DATA_FILE = os.path.join(BASE_DIR, "sensor_data.json")
-CSV_FILE_PATH = os.path.join(BASE_DIR, "sensor_data.csv")
+
+# Runtime storage (always updated here)
+SENSOR_DATA_FILE = os.path.join("/tmp", "sensor_data.json")
+CSV_FILE_PATH = os.path.join("/tmp", "sensor_data.csv")
+
+# Fallback copy from your repo (read-only)
+DEFAULT_SENSOR_DATA_FILE = os.path.join(BASE_DIR, "sensor_data.json")
 
 # Configure logging
 logging.basicConfig(
@@ -226,15 +231,12 @@ def convert_csv_to_json():
     print("✅ JSON data structured correctly with Street Flood Sensor Check.")
 
 
-@app.get("/api/sensor-data", response_model=Dict[str, List[Dict[str, Any]]])
+@app.get("/api/sensor-data")
 async def get_sensor_data():
-    try:
+    if os.path.exists(SENSOR_DATA_FILE):
         with open(SENSOR_DATA_FILE, "r") as f:
-            data = json.load(f)
-        return data
-    except (FileNotFoundError, json.JSONDecodeError):
-        print("Warning: sensor_data.json not found or invalid, returning empty data.")
-        return {key: [] for key in SENSOR_CATEGORIES.keys()}
+            return json.load(f)
+    raise HTTPException(status_code=404, detail="Sensor data not available")
 
 
 def start_auto_scraper():
@@ -251,10 +253,23 @@ def start_auto_scraper():
 # ✅ Ensure sensor_data.json exists on startup
 try:
     if not os.path.exists(SENSOR_DATA_FILE):
-        print("Sensor data file not found, running initial scrape...")
-        scrape_sensor_data()
+        print("⚡ No runtime sensor_data.json found, running initial scrape...")
+        try:
+            scrape_sensor_data()  # try live scrape
+        except Exception as scrape_error:
+            logger.error(f"❌ Initial scrape failed: {scrape_error}")
+
+            if os.path.exists(DEFAULT_SENSOR_DATA_FILE):
+                import shutil
+                shutil.copy(DEFAULT_SENSOR_DATA_FILE, SENSOR_DATA_FILE)
+                print("📦 Copied fallback sensor_data.json from repo to /tmp.")
+            else:
+                # Create empty JSON so API won’t crash
+                with open(SENSOR_DATA_FILE, "w") as f:
+                    json.dump({key: [] for key in SENSOR_CATEGORIES.keys()}, f, indent=4)
+                print("⚠️ No repo fallback found. Created empty /tmp/sensor_data.json.")
 except Exception as e:
-    print(f"Error running initial data scrape: {e}")
+    print(f"Error in startup data init: {e}")
 
 # ✅ Start background scraper thread
 scraper_thread = threading.Thread(target=start_auto_scraper, daemon=True)
