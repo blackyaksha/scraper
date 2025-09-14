@@ -17,8 +17,8 @@ import os
 
 # Set all internal file reads/writes to be relative to this script
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-SENSOR_DATA_FILE = os.path.join(/tmp, "sensor_data.json")
-CSV_FILE_PATH = os.path.join(/tmp, "sensor_data.csv")
+SENSOR_DATA_FILE = os.path.join(BASE_DIR, "sensor_data.json")
+CSV_FILE_PATH = os.path.join(BASE_DIR, "sensor_data.csv")
 
 # Configure logging
 logging.basicConfig(
@@ -48,7 +48,7 @@ app.add_middleware(
 )
 
 SENSOR_CATEGORIES = {
-"rain_gauge": [
+    "rain_gauge": [
         "QCPU", "Masambong", "Batasan Hills", "Ugong Norte", "Ramon Magsaysay HS",
         "UP Village", "Dona Imelda", "Kaligayahan", "Emilio Jacinto Sr HS", "Payatas ES",
         "Ramon Magsaysay Brgy Hall", "Phil-Am", "Holy Spirit", "Libis",
@@ -136,7 +136,7 @@ def scrape_sensor_data():
     try:
         logger.info("Initializing Chrome WebDriver...")
         driver = setup_chrome_driver()
-        url = "https://web.iriseup.ph/sensor_networks"
+        url = "https://app.iriseup.ph/sensor_networks"
         logger.info(f"🌍 Fetching data from: {url}")
         if not wait_for_page_load(driver, url):
             raise TimeoutError("Failed to load page after multiple attempts")
