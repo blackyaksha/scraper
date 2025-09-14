@@ -16,8 +16,8 @@ import logging
 import os
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-SENSOR_DATA_FILE = os.path.join("/tmp", "sensor_data.json")
-CSV_FILE_PATH = os.path.join("/tmp", "sensor_data.csv")
+SENSOR_DATA_FILE = os.path.join(BASE_DIR, "sensor_data.json")
+CSV_FILE_PATH = os.path.join(BASE_DIR, "sensor_data.csv")
 
 logging.basicConfig(
     level=logging.INFO,
@@ -198,15 +198,13 @@ def convert_csv_to_json():
         json.dump(categorized_data, f, indent=4)
     print("✅ JSON data structured correctly.")
 
-@app.get("/api/sensor-data", response_model=Dict[str, List[Dict[str, Any]]])
+@app.get("/api/sensor-data")
 async def get_sensor_data():
-    try:
-        with open(SENSOR_DATA_FILE, "r") as f:
-            data = json.load(f)
-        return data
-    except (FileNotFoundError, json.JSONDecodeError):
-        print("Warning: sensor_data.json not found or invalid, returning empty data.")
+    if not os.path.exists(SENSOR_DATA_FILE):
         return {key: [] for key in SENSOR_CATEGORIES.keys()}
+    with open(SENSOR_DATA_FILE, "r") as f:
+        data = json.load(f)
+    return data
 
 def start_auto_scraper():
     while True:
