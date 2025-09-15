@@ -183,59 +183,69 @@ def save_csv(sensor_data):
 
 def convert_csv_to_json():
     df = pd.read_csv(CSV_FILE_PATH)
+
+    # Hardcoded schema rules (OBS TIME dropped where not needed)
+    category_schemas = {
+        "rain_gauge": ["SENSOR NAME", "CURRENT"],  # no obs time, no normal
+        "flood_sensors": ["SENSOR NAME", "NORMAL LEVEL", "CURRENT", "DESCRIPTION"],
+        "street_flood_sensors": ["SENSOR NAME", "NORMAL LEVEL", "CURRENT", "DESCRIPTION"],  # obs time dropped
+        "flood_risk_index": ["SENSOR NAME", "CURRENT"],  # obs time dropped
+        "earthquake_sensors": ["SENSOR NAME", "CURRENT"],  # obs time dropped
+    }
+
+    # JSON structured by category
     categorized_data = {category: [] for category in SENSOR_CATEGORIES}
 
-    for _, row in df.iterrows():
-        sensor_name = row["SENSOR NAME"]
-        current_value = row["CURRENT"]
-        normal_value = row["NORMAL LEVEL"] if "NORMAL LEVEL" in df.columns else "N/A"
-        description = row["DESCRIPTION"] if "DESCRIPTION" in df.columns else "N/A"
-
-        sensor_entry = {
-            "SENSOR NAME": sensor_name,
-            "CURRENT": current_value,
-        }
-
-        if "m" in str(current_value):
-            category = "street_flood_sensors"
-            sensor_entry["NORMAL LEVEL"] = normal_value
-            sensor_entry["DESCRIPTION"] = description
-        else:
-            category = "flood_risk_index"
-
-        if sensor_name in SENSOR_CATEGORIES[category]:
-            categorized_data[category].append(sensor_entry)
+    # CSV → union of all needed fields + Category column
+    all_fields = sorted(set(sum(category_schemas.values(), [])))
+    csv_columns = ["Category"] + all_fields
+    csv_rows = []
 
     for category, sensors in SENSOR_CATEGORIES.items():
-        if category not in ["street_flood_sensors", "flood_risk_index"]:
-            for sensor_name in sensors:
-                matching_sensor = df[df["SENSOR NAME"].str.casefold() == sensor_name.casefold()]
-                if not matching_sensor.empty:
-                    normal_value = matching_sensor.iloc[0]["NORMAL LEVEL"] if "NORMAL LEVEL" in df.columns else "N/A"
-                    current_value = matching_sensor.iloc[0]["CURRENT"]
-                    description = matching_sensor.iloc[0]["DESCRIPTION"] if "DESCRIPTION" in df.columns else "N/A"
-                    sensor_entry = {
-                        "SENSOR NAME": sensor_name,
-                        "CURRENT": current_value,
-                    }
-                    if category in ["flood_sensors"]:
-                        sensor_entry["NORMAL LEVEL"] = normal_value
-                        sensor_entry["DESCRIPTION"] = description
-                    categorized_data[category].append(sensor_entry)
-                else:
-                    sensor_entry = {
-                        "SENSOR NAME": sensor_name,
-                        "CURRENT": "0.0m" if category == "street_flood_sensors" else 0.0,
-                    }
-                    if category in ["flood_sensors"]:
-                        sensor_entry["NORMAL LEVEL"] = "N/A"
-                        sensor_entry["DESCRIPTION"] = "N/A"
-                    categorized_data[category].append(sensor_entry)
+        for sensor_name in sensors:
+            matching_sensor = df[df["SENSOR NAME"].str.casefold() == sensor_name.casefold()]
 
+            if not matching_sensor.empty:
+                row = matching_sensor.iloc[0]
+
+                # Build JSON entry (only schema fields)
+                sensor_entry = {field: row[field] if field in row else "N/A"
+                                for field in category_schemas[category]}
+                categorized_data[category].append(sensor_entry)
+
+                # Build CSV entry
+                csv_entry = {col: "" for col in csv_columns}
+                csv_entry["Category"] = category
+                for field in category_schemas[category]:
+                    csv_entry[field] = row[field] if field in row else "N/A"
+                csv_rows.append(csv_entry)
+
+            else:
+                # Defaults if not found
+                sensor_entry = {field: "N/A" for field in category_schemas[category]}
+                sensor_entry["SENSOR NAME"] = sensor_name
+                if category == "street_flood_sensors":
+                    sensor_entry["CURRENT"] = "0.0m"
+                else:
+                    sensor_entry["CURRENT"] = 0.0
+                categorized_data[category].append(sensor_entry)
+
+                # CSV defaults
+                csv_entry = {col: "" for col in csv_columns}
+                csv_entry["Category"] = category
+                for field in category_schemas[category]:
+                    csv_entry[field] = sensor_entry[field]
+                csv_rows.append(csv_entry)
+
+    # Save JSON
     with open(SENSOR_DATA_FILE, "w") as f:
         json.dump(categorized_data, f, indent=4)
-    print("✅ JSON data structured correctly with Street Flood Sensor Check.")
+    print("✅ JSON file saved with strict category-based schema.")
 
+    # Save single CSV
+    df_csv = pd.DataFrame(csv_rows, columns=csv_columns)
+    df_csv.to_csv(CSV_FILE_PATH, index=False)
+    print("✅ Single CSV file saved with strict category-based schema.")
 
 @app.get("/api/sensor-data")
 async def get_sensor_data():
